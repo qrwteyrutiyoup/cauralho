@@ -1,0 +1,117 @@
+##############################################################################
+#   Copyright 2018 Sergio Correia <sergio@correia.cc>                        #
+#                                                                            #
+#   Licensed under the Apache License, Version 2.0 (the "License");          #
+#   you may not use this file except in compliance with the License.         #
+#   You may obtain a copy of the License at                                  #
+#                                                                            #
+#   http://www.apache.org/licenses/LICENSE-2.0                               #
+#                                                                            #
+#   Unless required by applicable law or agreed to in writing, software      #
+#   distributed under the License is distributed on an "AS IS" BASIS,        #
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. #
+#   See the License for the specific language governing permissions and      #
+#   limitations under the License.                                           #
+#                                                                            #
+#   cAURalho AUR updater meta helper.                                        #
+##############################################################################
+
+#!/usr/bin/env bash
+set -eE
+
+trap cleanup INT
+trap "cleanup 1" EXIT
+
+cleanup() {
+  local ret=${1}
+
+  if [[ -z "${ret}" ]]; then
+    clear
+    exit 0
+  fi
+  exit "${ret}"
+}
+
+load_config() {
+  # Global config.
+  if [[ -e /etc/cauralho.conf ]]; then
+    . /etc/cauralho.conf
+  fi
+
+  # Per-user config.
+  if [[ -e ~/.config/cauralho/cauralho.conf ]]; then
+    . ~/.config/cauralho/cauralho.conf
+  fi
+}
+
+cmd_exists() {
+  hash ${1} 2>/dev/null
+  return $?
+}
+
+sanity_check() {
+  if [[ -z "${AUR_HELPER}" ]]; then
+     echo "No AUR helper set. Please set AUR_HELPER variable at /etc/cauralho.conf or ~/.config/cauralho/cauralho.conf"
+     exit 1
+  fi
+
+  for cmd in dialog curl jq tr cut echo; do
+    if ! cmd_exists "${cmd}"; then
+      echo "cAURalho needs '${cmd}'"
+      exit 1
+    fi
+  done
+}
+
+cauralho() {
+  local AUR_VERSION=5
+  local AUR_RPC="https://aur.archlinux.org/rpc.php"
+
+  local pkgs="v=${AUR_VERSION}&type=info"
+  local aurlist=()
+  declare -A aurlocal
+
+  echo "cAURalho: verifying installed AUR packages..."
+  while read -r p; do
+    pname=$(echo "${p}" | cut -d ' ' -f 1)
+    pversion=$(echo "${p}" | cut -d ' ' -f 2)
+    pkgs="${pkgs}&arg[]=${pname}"
+    aurlocal[${pname}]=${pversion}
+  done <<< "$(pacman -Qm)"
+
+  local checklist=""
+  while read -r aur; do
+    aurpkg=$(echo "${aur}" | cut -d ' ' -f 1)
+    aurver=$(echo "${aur}" | cut -d ' ' -f 2)
+    localver=${aurlocal[${aurpkg}]}
+
+    if [[ "${aurver}" != "${localver}" ]]; then
+      checklist="${checklist} ${aurpkg} ${localver}=>${aurver} off "
+    fi
+  done  <<< "$(curl -s "${AUR_RPC}?${pkgs}" | jq '.results[] | (.Name + " " + .Version)' | tr -d '"')"
+
+  local selection=$(dialog  --stdout --separate-output \
+   --title 'cAURalho' \
+   --checklist 'Select the AUR packages to update'  \
+   0 0 0 ${checklist})
+   clear
+
+  if [[ -z "${selection}" ]]; then
+    cleanup
+  fi
+
+  local count=$(echo "${selection}" | wc -l)
+  echo "Updating ${count} AUR packages..."
+  i=1
+  for p in ${selection}; do
+    echo ">>> ${p} (${i}/${count})"
+    ${AUR_HELPER} ${p}
+    i=$((${i}+1))
+  done
+  echo "cAURalho completed successfully."
+}
+
+load_config
+sanity_check
+cauralho
+# vim:set ts=2 sw=2 et:

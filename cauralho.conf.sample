@@ -1,0 +1,11 @@
+# cAURalho needs an AUR helper to update packages.
+# Define AUR_HELPER variable to indicate the helper to be used.
+# Examples:
+#   AUR_HELPER="yay -S"
+#   AUR_HELPER="bb-wrapper -S --aur"
+#   AUR_HELPER="trizen -S"
+#
+# You can find more information on AUR helpers at:
+# https://wiki.archlinux.org/index.php/AUR_helpers
+#
+AUR_HELPER=
