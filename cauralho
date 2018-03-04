@@ -55,7 +55,7 @@ sanity_check() {
      exit 1
   fi
 
-  for cmd in dialog curl jq tr cut echo; do
+  for cmd in dialog curl jq tr cut echo sed sort head; do
     if ! cmd_exists "${cmd}"; then
       echo "cAURalho needs '${cmd}'"
       exit 1
@@ -86,7 +86,6 @@ compare_versions() {
   vv1=$(echo "${corev1}" | sed -e 's/^[a-zA-Z]\+//')
 
   if [[ "${vv1}" = "${smaller}" ]]; then
-    echo "${v1} < ${v2}"
     return 1
   fi
   return 2
