@@ -63,6 +63,35 @@ sanity_check() {
   done
 }
 
+compare_versions() {
+  v1="${1}"
+  v2="${2}"
+
+  corev1=$(echo "${v1}" | cut -d '-' -f 1)
+  relv1=$(echo "${v1}" | cut -d '-' -f 2)
+  corev2=$(echo "${v2}" | cut -d '-' -f 1)
+  relv2=$(echo "${v2}" | cut -d '-' -f 2)
+
+  if [[ "${corev1}" = "${corev2}" ]]; then
+    if [[ "${relv1}" = "${relv2}" ]]; then
+      return 0
+    elif [[ "${relv1}" -lt "${relv2}" ]]; then
+      return 1
+    else
+      return 2
+    fi
+  fi
+
+  smaller=$(echo -e "${corev1}\n${corev2}" | sed -e 's/^[a-zA-Z]\+//' | sort -n | head -1)
+  vv1=$(echo "${corev1}" | sed -e 's/^[a-zA-Z]\+//')
+
+  if [[ "${vv1}" = "${smaller}" ]]; then
+    echo "${v1} < ${v2}"
+    return 1
+  fi
+  return 2
+}
+
 cauralho() {
   local AUR_VERSION=5
   local AUR_RPC="https://aur.archlinux.org/rpc.php"
@@ -85,9 +114,15 @@ cauralho() {
     aurver=$(echo "${aur}" | cut -d ' ' -f 2)
     localver=${aurlocal[${aurpkg}]}
 
-    if [[ "${aurver}" > "${localver}" ]]; then
+    set +eE
+    # Checking if the version in the AUR is greater than the one we have
+    # locally. compare_version returns 0 if the versions match, 1 if local
+    # version is greater than the one in the AUR, and 2 otherwise.
+    compare_versions "${aurver}" "${localver}"
+    if [[ "${?}" -eq 2 ]]; then
       checklist="${checklist} ${aurpkg} ${localver}=>${aurver} off "
     fi
+    set -eE
   done  <<< "$(curl -s "${AUR_RPC}?${pkgs}" | jq '.results[] | (.Name + " " + .Version)' | tr -d '"')"
 
   if [[ -z "${checklist}" ]]; then
@@ -95,13 +130,11 @@ cauralho() {
     exit 0
   fi
 
-
   local selection=$(dialog  --stdout --separate-output \
    --title 'cAURalho' \
    --checklist 'Select the AUR packages to update'  \
    0 0 0 ${checklist})
   clear
-
 
   local count=0
   if [[ -n "${selection}" ]]; then
