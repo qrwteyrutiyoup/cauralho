@@ -90,24 +90,32 @@ cauralho() {
     fi
   done  <<< "$(curl -s "${AUR_RPC}?${pkgs}" | jq '.results[] | (.Name + " " + .Version)' | tr -d '"')"
 
+  if [[ -z "${checklist}" ]]; then
+    echo "There are no outdated AUR packages."
+    exit 0
+  fi
+
+
   local selection=$(dialog  --stdout --separate-output \
    --title 'cAURalho' \
    --checklist 'Select the AUR packages to update'  \
    0 0 0 ${checklist})
-   clear
+  clear
 
-  if [[ -z "${selection}" ]]; then
-    cleanup
+
+  local count=0
+  if [[ -n "${selection}" ]]; then
+    count=$(echo "${selection}" | wc -l)
+    echo "Updating ${count} AUR package(s)..."
+    i=1
+    for p in ${selection}; do
+      echo ">>> ${p} (${i}/${count})"
+      ${AUR_HELPER} ${p}
+      i=$((${i}+1))
+    done
+  else
+    echo "No packages to update."
   fi
-
-  local count=$(echo "${selection}" | wc -l)
-  echo "Updating ${count} AUR packages..."
-  i=1
-  for p in ${selection}; do
-    echo ">>> ${p} (${i}/${count})"
-    ${AUR_HELPER} ${p}
-    i=$((${i}+1))
-  done
   echo "cAURalho completed successfully."
 }
 
