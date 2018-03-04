@@ -85,7 +85,7 @@ cauralho() {
     aurver=$(echo "${aur}" | cut -d ' ' -f 2)
     localver=${aurlocal[${aurpkg}]}
 
-    if [[ "${aurver}" != "${localver}" ]]; then
+    if [[ "${aurver}" > "${localver}" ]]; then
       checklist="${checklist} ${aurpkg} ${localver}=>${aurver} off "
     fi
   done  <<< "$(curl -s "${AUR_RPC}?${pkgs}" | jq '.results[] | (.Name + " " + .Version)' | tr -d '"')"
