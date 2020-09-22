@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 ##############################################################################
 #   Copyright 2018 Sergio Correia <sergio@correia.cc>                        #
 #                                                                            #
@@ -16,7 +17,6 @@
 #   cAURalho AUR updater meta helper.                                        #
 ##############################################################################
 
-#!/usr/bin/env bash
 set -eE
 
 trap cleanup INT
