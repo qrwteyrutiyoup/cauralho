@@ -93,7 +93,7 @@ compare_versions() {
 
 cauralho() {
   local AUR_VERSION=5
-  local AUR_RPC="https://aur.archlinux.org/rpc.php"
+  local AUR_RPC="https://aur.archlinux.org/rpc"
 
   local pkgs="v=${AUR_VERSION}&type=info"
   local aurlist=()
